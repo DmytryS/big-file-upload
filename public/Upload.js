@@ -11,13 +11,12 @@ class Upload extends Component {
         this.state = {
             file: false,
             fileId: false,
-            uploading: false,
-            uploadProgress: {},
-            successfullUploaded: false
+            percentage: 0,
+            state: 'pending'
         };
 
         this.onFileAdded = this.onFileAdded.bind(this);
-        this.uploadFiles = this.uploadFiles.bind(this);
+        this.uploadFile = this.uploadFile.bind(this);
         this.renderActions = this.renderActions.bind(this);
         this.getUploadedBytes = this.getUploadedBytes.bind(this);
     }
@@ -42,12 +41,19 @@ class Upload extends Component {
         this.setState({
             // fileId: `${file.name}-${file.size}-${+file.lastModifiedDate}`,
             fileId: file.name,
-            file
+            file,
+            percentage: 0,
+            state: 'pending'
         });
     }
 
-    async uploadFiles(file) {
+    async uploadFile() {
         try {
+            this.setState({
+                percentage: 0,
+                state: 'loading'
+            });
+
             const startByte = await this.getUploadedBytes();
 
             return new Promise((resolve, reject) => {
@@ -57,30 +63,23 @@ class Upload extends Component {
                     if (event.lengthComputable) {
 
                         this.setState({
-                            uploadProgress: {
-                                state: "pending",
-                                percentage: (event.loaded / event.total) * 100
-                            }
+                            percentage: (event.loaded / event.total) * 100,
                         });
                     }
                 });
 
                 req.upload.addEventListener("load", event => {
                     this.setState({
-                        uploadProgress: {
-                            state: "done",
-                            percentage: 100
-                        }
+                        state: 'done',
+                        percentage: 100
                     });
                     resolve(req.response);
                 });
 
                 req.upload.addEventListener("error", event => {
                     this.setState({
-                        uploadProgress: {
-                            state: "error",
-                            percentage: 0
-                        }
+                        state: "error",
+                        percentage: 0
                     });
                     reject(req.response);
                 });
@@ -92,36 +91,71 @@ class Upload extends Component {
             });
         } catch (error) {
             console.log('ERR:', error);
+            this.setState({
+                state: "error",
+                percentage: 0
+            });
         }
     }
 
-    renderProgress(file) {
-        const uploadProgress = this.state.uploadProgress;
-        if (this.state.uploading || this.state.successfullUploaded) {
-            return (
-                <div className="ProgressWrapper">
-                    <Progress progress={uploadProgress ? uploadProgress.percentage : 0} />
-                </div>
-            );
-        }
+    renderProgress() {
+        return (
+            <div className="ProgressWrapper">
+                <Progress progress={this.state.percentage} />
+            </div>
+        );
     }
 
     renderActions() {
-        if (this.state.successfullUploaded) {
+        if (this.state.state === 'error' || this.state.state === 'done') {
             return (
                 <button
                     onClick={() =>
-                        this.setState({ file: false, successfullUploaded: false })
+                        this.setState({
+                            file: false,
+                            percentage: 0,
+                            state: 'pending'
+                        })
                     }
                 >
                     Clear
         </button>
             );
-        } else {
+        }
+
+        if (this.state.state === 'loading') {
             return (
                 <button
-                    disabled={this.state.uploading}
-                    onClick={this.uploadFiles}
+                    onClick={() =>
+                        this.setState({
+                            state: 'pause'
+                        })
+                    }
+                >
+                    Stop
+        </button>
+            );
+        }
+
+        if (this.state.state === 'pause') {
+            return (
+                <button
+                    onClick={() =>
+                        this.setState({
+                            state: 'loading'
+                        })
+                    }
+                >
+                    Continue
+        </button>
+            );
+        }
+
+        if (this.state.state === 'pending') {
+            return (
+                <button
+                    disabled={this.state.state === 'pending' && !this.state.file}
+                    onClick={this.uploadFile}
                 >
                     Upload
         </button>
@@ -140,13 +174,12 @@ class Upload extends Component {
                             disabled={this.state.uploading || this.state.successfullUploaded}
                         />
                     </div>
-                    <div className="Files">
-
+                    <div className="File">
                         <div key={this.state.file.name} className="Row">
+                            File:
                             <span className="Filename">{this.state.file.name}</span>
-                            {this.renderProgress(this.state.uploadProgress)}
+                            {this.renderProgress()}
                         </div>
-
                     </div>
                 </div>
                 <div className="Actions">{this.renderActions()}</div>

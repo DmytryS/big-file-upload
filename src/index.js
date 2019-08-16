@@ -75,7 +75,6 @@ const onUpload = (req, res) => {
     res.writeHead(500);
     res.end('File error');
   });
-
 }
 
 const onStatus = (req, res) => {
