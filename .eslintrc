@@ -1,0 +1,10 @@
+{
+    "extends": "airbnb",
+    "rules": {
+        "import/extensions": 0,
+        "no-alert": 0
+    },
+    "env": {
+        "browser": true
+    }
+}
